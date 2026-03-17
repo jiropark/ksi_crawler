@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}시그널{% endblock %}
+
+{% block content %}
+<h1>스크리닝 시그널</h1>
+
+<!-- 시그널 요약 카드 -->
+<div class="card-grid">
+    <div class="card">
+        <div class="card-label">전체 시그널</div>
+        <div class="card-value">{{ signals | length }}건</div>
+    </div>
+    <div class="card">
+        <div class="card-label">매수 시그널</div>
+        <div class="card-value profit">{{ buy_count }}건</div>
+    </div>
+    <div class="card">
+        <div class="card-label">매도 시그널</div>
+        <div class="card-value loss">{{ sell_count }}건</div>
+    </div>
+    <div class="card">
+        <div class="card-label">보유 시그널</div>
+        <div class="card-value" style="color: #fcc419;">{{ hold_count }}건</div>
+    </div>
+</div>
+
+<!-- 시그널 테이블 -->
+<div class="section">
+    <h2>최근 시그널</h2>
+    {% if signals %}
+    <div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>시간</th>
+                <th>종목코드</th>
+                <th>종목명</th>
+                <th>유형</th>
+                <th>전략</th>
+                <th>점수</th>
+                <th>가격</th>
+                <th>사유</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in signals %}
+            <tr>
+                <td>{{ (s.created_at or '')[:16] }}</td>
+                <td>{{ s.code }}</td>
+                <td>{{ s.name }}</td>
+                <td>
+                    {% if s.signal_type == 'BUY' %}
+                    <span class="badge badge-buy">매수</span>
+                    {% elif s.signal_type == 'SELL' %}
+                    <span class="badge badge-sell">매도</span>
+                    {% else %}
+                    <span class="badge badge-hold">보유</span>
+                    {% endif %}
+                </td>
+                <td>{{ s.strategy or '-' }}</td>
+                <td>
+                    {% if s.score is not none %}
+                    <span class="score-bar">
+                        <span class="score-fill" style="width: {{ (s.score * 100) | int }}%"></span>
+                        <span class="score-text">{{ "%.1f"|format(s.score) }}</span>
+                    </span>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>{{ "{:,.0f}".format(s.price) if s.price else '-' }}원</td>
+                <td class="reason-cell" title="{{ s.reason or '' }}">{{ s.reason or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-msg">시그널이 없습니다. 장 시간에 스크리닝이 실행됩니다.</p>
+    {% endif %}
+</div>
+{% endblock %}

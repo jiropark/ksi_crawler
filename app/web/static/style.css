@@ -1,0 +1,336 @@
+/* ── KIS 스크리너 다크 테마 ── */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', 'Noto Sans KR', system-ui, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* 네비게이션 */
+.navbar {
+    background-color: #16213e;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #0f3460;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.nav-brand {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #4dabf7;
+}
+
+.nav-status {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.status-time {
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-open {
+    background-color: rgba(81, 207, 102, 0.2);
+    color: #51cf66;
+}
+
+.status-closed {
+    background-color: rgba(108, 117, 125, 0.2);
+    color: #aaa;
+}
+
+.nav-links {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.nav-links a {
+    color: #aaa;
+    text-decoration: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.nav-links a:hover {
+    color: #e0e0e0;
+    background-color: rgba(77, 171, 247, 0.15);
+}
+
+.nav-links a.active {
+    color: #4dabf7;
+    background-color: rgba(77, 171, 247, 0.2);
+}
+
+/* 컨테이너 */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+h1 {
+    color: #e0e0e0;
+    margin-bottom: 1.5rem;
+    font-size: 1.6rem;
+}
+
+h2 {
+    color: #ccc;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 카드 그리드 */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.card {
+    background-color: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 10px;
+    padding: 1.2rem 1.5rem;
+    text-align: center;
+}
+
+.card-label {
+    color: #888;
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+}
+
+.card-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #e0e0e0;
+}
+
+/* 수익/손실 색상 */
+.profit {
+    color: #51cf66 !important;
+}
+
+.loss {
+    color: #ff6b6b !important;
+}
+
+/* 섹션 */
+.section {
+    background-color: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.section-link {
+    font-size: 0.85rem;
+    color: #4dabf7;
+    text-decoration: none;
+    font-weight: normal;
+}
+
+.section-link:hover {
+    text-decoration: underline;
+}
+
+/* 테이블 */
+.table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+th, td {
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid #0f3460;
+}
+
+th {
+    color: #888;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+tbody tr:nth-child(even) {
+    background-color: rgba(15, 52, 96, 0.3);
+}
+
+tr:hover {
+    background-color: rgba(77, 171, 247, 0.05);
+}
+
+.reason-cell {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 뱃지 */
+.badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-buy {
+    background-color: rgba(81, 207, 102, 0.2);
+    color: #51cf66;
+}
+
+.badge-sell {
+    background-color: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+}
+
+.badge-hold {
+    background-color: rgba(252, 196, 25, 0.2);
+    color: #fcc419;
+}
+
+.badge-neutral {
+    background-color: rgba(108, 117, 125, 0.2);
+    color: #aaa;
+}
+
+/* 점수 바 */
+.score-bar {
+    display: inline-block;
+    position: relative;
+    width: 60px;
+    height: 18px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.score-fill {
+    display: block;
+    height: 100%;
+    background-color: rgba(77, 171, 247, 0.4);
+    border-radius: 3px;
+}
+
+.score-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 0.7rem;
+    line-height: 18px;
+    color: #e0e0e0;
+    font-weight: 600;
+}
+
+/* 빈 데이터 메시지 */
+.empty-msg {
+    color: #666;
+    text-align: center;
+    padding: 2rem;
+    font-style: italic;
+}
+
+/* 푸터 */
+.footer {
+    text-align: center;
+    padding: 1.5rem;
+    color: #555;
+    font-size: 0.8rem;
+    border-top: 1px solid #0f3460;
+    margin-top: 2rem;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .navbar {
+        flex-direction: column;
+        gap: 0.8rem;
+        padding: 0.8rem 1rem;
+    }
+
+    .nav-links {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .container {
+        padding: 1rem;
+    }
+
+    .card-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .card-value {
+        font-size: 1.2rem;
+    }
+
+    table {
+        font-size: 0.8rem;
+    }
+
+    th, td {
+        padding: 0.4rem 0.5rem;
+    }
+
+    h1 {
+        font-size: 1.3rem;
+    }
+
+    .reason-cell {
+        max-width: 150px;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .nav-status {
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+}

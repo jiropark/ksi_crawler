@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}매매내역{% endblock %}
+
+{% block content %}
+<h1>매매 내역</h1>
+
+<!-- 매매 요약 카드 -->
+<div class="card-grid">
+    <div class="card">
+        <div class="card-label">총 매매 건수</div>
+        <div class="card-value">{{ trades | length }}건</div>
+    </div>
+    <div class="card">
+        <div class="card-label">총 실현 손익</div>
+        <div class="card-value {% if total_profit >= 0 %}profit{% else %}loss{% endif %}">
+            {{ "{:+,.0f}".format(total_profit) }}원
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-label">승률</div>
+        <div class="card-value {% if win_rate >= 50 %}profit{% else %}loss{% endif %}">
+            {{ "%.1f"|format(win_rate) }}%
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-label">승 / 패</div>
+        <div class="card-value">
+            <span class="profit">{{ win_count }}</span> / <span class="loss">{{ loss_count }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- 매매 테이블 -->
+<div class="section">
+    <h2>매매 기록</h2>
+    {% if trades %}
+    <div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>시간</th>
+                <th>종목코드</th>
+                <th>종목명</th>
+                <th>구분</th>
+                <th>가격</th>
+                <th>수량</th>
+                <th>금액</th>
+                <th>수익률</th>
+                <th>실현손익</th>
+                <th>전략</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in trades %}
+            <tr>
+                <td>{{ (t.created_at or '')[:16] }}</td>
+                <td>{{ t.code }}</td>
+                <td>{{ t.name }}</td>
+                <td>
+                    {% if t.side == 'BUY' %}
+                    <span class="badge badge-buy">매수</span>
+                    {% else %}
+                    <span class="badge badge-sell">매도</span>
+                    {% endif %}
+                </td>
+                <td>{{ "{:,.0f}".format(t.price) }}원</td>
+                <td>{{ "{:,}".format(t.quantity) }}주</td>
+                <td>{{ "{:,.0f}".format(t.amount) }}원</td>
+                <td>
+                    {% if t.profit_pct is not none and t.side == 'SELL' %}
+                    <span class="{% if t.profit_pct >= 0 %}profit{% else %}loss{% endif %}">
+                        {{ "{:+.2f}".format(t.profit_pct) }}%
+                    </span>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if t.profit_amount is not none and t.side == 'SELL' %}
+                    <span class="{% if t.profit_amount >= 0 %}profit{% else %}loss{% endif %}">
+                        {{ "{:+,.0f}".format(t.profit_amount) }}원
+                    </span>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td><span class="badge badge-neutral">{{ t.strategy or '-' }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-msg">매매 기록이 없습니다.</p>
+    {% endif %}
+</div>
+{% endblock %}

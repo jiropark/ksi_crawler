@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}포트폴리오{% endblock %}
+
+{% block content %}
+<h1>포트폴리오 현황</h1>
+
+<!-- 요약 카드 -->
+<div class="card-grid">
+    <div class="card">
+        <div class="card-label">총 자산</div>
+        <div class="card-value">{{ "{:,.0f}".format(summary.total_asset) }}원</div>
+    </div>
+    <div class="card">
+        <div class="card-label">현금</div>
+        <div class="card-value">{{ "{:,.0f}".format(summary.cash) }}원</div>
+    </div>
+    <div class="card">
+        <div class="card-label">주식 평가액</div>
+        <div class="card-value">{{ "{:,.0f}".format(summary.stock_value) }}원</div>
+    </div>
+    <div class="card">
+        <div class="card-label">총 수익률</div>
+        <div class="card-value {% if summary.profit_pct >= 0 %}profit{% else %}loss{% endif %}">
+            {{ "{:+.2f}".format(summary.profit_pct) }}%
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-label">보유 종목</div>
+        <div class="card-value">{{ summary.position_count }} / {{ summary.max_positions }}</div>
+    </div>
+    <div class="card">
+        <div class="card-label">누적 수수료+세금</div>
+        <div class="card-value loss">-{{ "{:,.0f}".format(summary.total_fees|default(0)) }}원</div>
+    </div>
+</div>
+
+<!-- 보유 종목 테이블 -->
+<div class="section">
+    <h2>보유 종목</h2>
+    {% if summary.positions %}
+    <div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>종목코드</th>
+                <th>종목명</th>
+                <th>매수가</th>
+                <th>수량</th>
+                <th>평가금액</th>
+                <th>최고가</th>
+                <th>전략</th>
+                <th>상태</th>
+                <th>매수일</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in summary.positions %}
+            <tr>
+                <td>{{ p.code }}</td>
+                <td>{{ p.name }}</td>
+                <td>{{ "{:,.0f}".format(p.buy_price) }}</td>
+                <td>{{ "{:,}".format(p.quantity) }}주</td>
+                <td>{{ "{:,.0f}".format(p.amount) }}원</td>
+                <td>{{ "{:,.0f}".format(p.highest_price or p.buy_price) }}</td>
+                <td><span class="badge badge-neutral">{{ p.strategy or '-' }}</span></td>
+                <td>{{ p.status or 'OPEN' }}</td>
+                <td>{{ (p.opened_at or '')[:16] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-msg">보유 종목이 없습니다.</p>
+    {% endif %}
+</div>
+
+<!-- 최근 시그널 미리보기 -->
+<div class="section">
+    <h2>최근 시그널 <a href="/signals" class="section-link">전체 보기 &rarr;</a></h2>
+    {% if signals %}
+    <div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>시간</th>
+                <th>종목</th>
+                <th>유형</th>
+                <th>전략</th>
+                <th>점수</th>
+                <th>사유</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in signals %}
+            <tr>
+                <td>{{ (s.created_at or '')[:16] }}</td>
+                <td>{{ s.name }} ({{ s.code }})</td>
+                <td>
+                    {% if s.signal_type == 'BUY' %}
+                    <span class="badge badge-buy">매수</span>
+                    {% elif s.signal_type == 'SELL' %}
+                    <span class="badge badge-sell">매도</span>
+                    {% else %}
+                    <span class="badge badge-hold">보유</span>
+                    {% endif %}
+                </td>
+                <td>{{ s.strategy or '-' }}</td>
+                <td>{{ s.score or '-' }}</td>
+                <td class="reason-cell">{{ s.reason or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-msg">시그널이 없습니다.</p>
+    {% endif %}
+</div>
+
+<!-- 자산 변화 -->
+<div class="section">
+    <h2>자산 변화 (최근 30일)</h2>
+    {% if daily %}
+    <div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>날짜</th>
+                <th>총 자산</th>
+                <th>현금</th>
+                <th>주식 평가</th>
+                <th>수익률</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in daily %}
+            <tr>
+                <td>{{ d.date }}</td>
+                <td>{{ "{:,.0f}".format(d.total_asset) }}원</td>
+                <td>{{ "{:,.0f}".format(d.cash) }}원</td>
+                <td>{{ "{:,.0f}".format(d.stock_value) }}원</td>
+                <td class="{% if d.profit_pct >= 0 %}profit{% else %}loss{% endif %}">
+                    {{ "{:+.2f}".format(d.profit_pct) }}%
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-msg">아직 일별 데이터가 없습니다.</p>
+    {% endif %}
+</div>
+{% endblock %}

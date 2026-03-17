@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="60">
+    <title>{% block title %}홈{% endblock %} - KIS 스크리너</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">KIS 스크리너</div>
+        <div class="nav-status">
+            <span class="status-time">{{ now }}</span>
+            <span class="status-badge {% if market_status == '장중' %}status-open{% else %}status-closed{% endif %}">
+                {{ market_status }}
+            </span>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="{% if request.path == '/' %}active{% endif %}">홈</a>
+            <a href="/signals" class="{% if request.path == '/signals' %}active{% endif %}">시그널</a>
+            <a href="/trades" class="{% if request.path == '/trades' %}active{% endif %}">매매내역</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>KIS 스켈핑 스크리너 - 눌림목 자동매매 시뮬레이터</p>
+        <p style="font-size: 0.85em; color: #888; margin-top: 4px;">
+            60초마다 자동 새로고침 | 초기자본 {{ "{:,.0f}".format(summary.initial_capital if summary is defined else 5000000) }}원
+        </p>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  kis-screener:
+    build: .
+    container_name: kis-screener
+    restart: unless-stopped
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./data:/data
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Seoul
