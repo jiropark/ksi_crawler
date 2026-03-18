@@ -14,7 +14,7 @@ BASE_URL_TRADE = BASE_URL_REAL if IS_REAL else BASE_URL_VTS
 BASE_URL_MARKET = BASE_URL_REAL if IS_REAL else BASE_URL_VTS
 
 # 스크리닝 기준
-MIN_TRADE_AMOUNT = 100_000_000_000   # 거래대금 1000억
+MIN_TRADE_AMOUNT = 10_000_000_000    # 거래대금 100억 (1000억은 대형주만 통과)
 MIN_CHANGE_RATE = 5.0                # 등락률 +5% (이전: 10%)
 MAX_CHANGE_RATE = 20.0               # 등락률 상한 20% (이전: 27%)
 MIN_MARKET_CAP = 100_000_000_000     # 시총 1000억
