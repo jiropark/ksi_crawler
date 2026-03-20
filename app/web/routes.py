@@ -43,10 +43,18 @@ def _portfolio_summary() -> dict:
         buy_price = pos.get("buy_price", 0)
         quantity = pos.get("quantity", 0)
 
-        # 현재가 조회 (KIS → 네이버 폴백)
-        cur = get_current_price(code) if code else {}
-        if not cur or not cur.get("price"):
-            cur = get_naver_price(code) if code else {}
+        # 현재가 조회 (KIS → 네이버 폴백, 실패 시 매입가 사용)
+        cur = {}
+        if code:
+            try:
+                cur = get_current_price(code)
+            except Exception:
+                pass
+            if not cur or not cur.get("price"):
+                try:
+                    cur = get_naver_price(code)
+                except Exception:
+                    pass
 
         current_price = cur.get("price", 0) or buy_price
         pos["current_price"] = current_price
