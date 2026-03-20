@@ -32,12 +32,31 @@ def _market_status() -> str:
 
 def _portfolio_summary() -> dict:
     """포트폴리오 요약 데이터를 실시간으로 구성한다."""
+    from app.api.rest import get_current_price, get_naver_price
+
     positions = get_open_positions()
+
+    # 각 포지션에 현재가 + 수익률 추가
+    stock_value = 0
+    for pos in positions:
+        code = pos.get("code", "")
+        buy_price = pos.get("buy_price", 0)
+        quantity = pos.get("quantity", 0)
+
+        # 현재가 조회 (KIS → 네이버 폴백)
+        cur = get_current_price(code) if code else {}
+        if not cur or not cur.get("price"):
+            cur = get_naver_price(code) if code else {}
+
+        current_price = cur.get("price", 0) or buy_price
+        pos["current_price"] = current_price
+        pos["pnl_pct"] = round((current_price / buy_price - 1) * 100, 2) if buy_price > 0 else 0.0
+
+        stock_value += current_price * quantity
 
     # trades 기반으로 현금 실시간 계산 (수수료 포함)
     cash = get_cash_from_trades(INITIAL_CAPITAL)
     total_fees = get_total_fees()
-    stock_value = sum(p.get("amount", 0) for p in positions)
     total_asset = cash + stock_value
     profit_pct = ((total_asset - INITIAL_CAPITAL) / INITIAL_CAPITAL) * 100 if INITIAL_CAPITAL else 0.0
 
