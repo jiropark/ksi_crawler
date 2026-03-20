@@ -83,10 +83,6 @@ def check_hold_or_sell(position: dict) -> dict:
     name = position["name"]
     buy_price = position["buy_price"]
     prev_highest = position.get("highest_price") or buy_price
-    original_qty = position.get("original_quantity", 0)
-    current_qty = position.get("quantity", 0)
-    already_partial_sold = original_qty > 0 and current_qty < original_qty
-
     # 네이버에서 현재가 조회
     try:
         price_data = get_naver_price(code)
@@ -116,20 +112,20 @@ def check_hold_or_sell(position: dict) -> dict:
         logger.warning("[SELL] %s %s — %s", code, name, reason)
         return _result(position, "SELL", reason, current_price, profit_pct, highest)
 
-    # 2) 1차 익절 → 50% 매도 (이미 반매도한 경우 스킵)
-    if not already_partial_sold and profit_pct >= PULLBACK_TARGET_1:
-        reason = f"1차 익절 ({profit_pct:+.2f}% ≥ +{PULLBACK_TARGET_1}%)"
-        logger.info("[PARTIAL_SELL] %s %s — %s", code, name, reason)
-        return _result(position, "PARTIAL_SELL", reason, current_price, profit_pct, highest)
-
-    # 3) 트레일링 스탑 (최소 수익률 +N% 이상일 때만 활성화)
-    if gain_from_buy >= TRAILING_ACTIVATE and drop_from_high <= -TRAILING_STOP:
-        reason = (
-            f"트레일링 스탑 (고점 {highest:,}원 대비 {drop_from_high:+.2f}% "
-            f"≤ -{TRAILING_STOP}%, 활성화 조건: 고점 수익률 +{gain_from_buy:.1f}%)"
-        )
-        logger.warning("[SELL] %s %s — %s", code, name, reason)
+    # 2) 익절 → 전량 매도
+    if profit_pct >= PULLBACK_TARGET_1:
+        reason = f"익절 ({profit_pct:+.2f}% ≥ +{PULLBACK_TARGET_1}%)"
+        logger.info("[SELL] %s %s — %s", code, name, reason)
         return _result(position, "SELL", reason, current_price, profit_pct, highest)
+
+    # 3) 트레일링 스탑 (v2: 초기 비활성화, 데이터 축적 후 재검토)
+    # if gain_from_buy >= TRAILING_ACTIVATE and drop_from_high <= -TRAILING_STOP:
+    #     reason = (
+    #         f"트레일링 스탑 (고점 {highest:,}원 대비 {drop_from_high:+.2f}% "
+    #         f"≤ -{TRAILING_STOP}%, 활성화 조건: 고점 수익률 +{gain_from_buy:.1f}%)"
+    #     )
+    #     logger.warning("[SELL] %s %s — %s", code, name, reason)
+    #     return _result(position, "SELL", reason, current_price, profit_pct, highest)
 
     return _result(position, "HOLD", "HOLD", current_price, profit_pct, highest)
 

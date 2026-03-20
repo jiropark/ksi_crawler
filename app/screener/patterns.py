@@ -69,12 +69,12 @@ def _calculate_score(
     - 거래대금: 1000억=0, 5000억+=1 (거래 활발)
     - 시총: 1000억=0.3, 1조=0.7, 5조+=1.0 (적당한 사이즈)
     """
-    # 등락률 점수: 5~15% 구간 정규화
-    rate_score = min(max((change_rate - 5) / 10, 0), 1.0)
+    # 등락률 점수: 7~15% 구간 정규화 (v2)
+    rate_score = min(max((change_rate - 7) / 8, 0), 1.0)
 
-    # 거래대금 점수: 1000억~5000억 구간 정규화
+    # 거래대금 점수: 3000억~1조 구간 정규화 (v2)
     amount_billion = trade_amount / 100_000_000_000  # 억원 → 1000억 단위
-    amount_score = min(max((amount_billion - 1) / 4, 0), 1.0)
+    amount_score = min(max((amount_billion - 3) / 7, 0), 1.0)
 
     # 시총 점수
     cap_trillion = market_cap / 1_000_000_000_000  # 조원 단위

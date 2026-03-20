@@ -1,6 +1,10 @@
-"""KIS 스크리너 — 메인 엔트리포인트
+"""KIS 스크리너 — 메인 엔트리포인트 (눌림목 v2)
 
 APScheduler 기반 스케줄링 + Flask 웹서버.
+- 5분마다 스크리닝 (2단계 확인 진입)
+- 3분마다 포지션 체크 (손절/익절)
+- 15:20 당일 강제 청산
+- 15:35 일일 스냅샷
 """
 
 import logging
@@ -12,11 +16,19 @@ from dotenv import load_dotenv
 load_dotenv()  # .env 로드 (Docker env_file보다 먼저)
 
 from app.config import MARKET_OPEN, MARKET_CLOSE, SCAN_INTERVAL_SEC, WEB_PORT
+
+_pos_check_sec = 180  # 3분 주기 (기본값)
+try:
+    from app.config import POSITION_CHECK_SEC
+    _pos_check_sec = POSITION_CHECK_SEC
+except ImportError:
+    pass
 from app.storage.db import init_db
 from app.strategy.portfolio import (
     run_screening_cycle,
     check_positions_cycle,
     save_daily_snapshot as _save_snapshot,
+    force_close_all as _force_close,
 )
 
 logging.basicConfig(
@@ -37,7 +49,7 @@ def is_market_open() -> bool:
 
 
 def run_screening():
-    """매 1분 스크리닝 (장 시간만)."""
+    """매 5분 스크리닝 (장 시간만)."""
     if not is_market_open():
         return
     try:
@@ -47,13 +59,21 @@ def run_screening():
 
 
 def check_positions():
-    """매 5분 보유종목 점검 (장 시간만)."""
+    """매 3분 보유종목 점검 (장 시간만)."""
     if not is_market_open():
         return
     try:
         check_positions_cycle()
     except Exception:
         logger.exception("포지션 체크 실패")
+
+
+def force_close():
+    """15:20 당일 강제 청산."""
+    try:
+        _force_close()
+    except Exception:
+        logger.exception("강제 청산 실패")
 
 
 def save_daily_snapshot():
@@ -74,9 +94,13 @@ def main():
     scheduler.add_job(run_screening, "interval", seconds=SCAN_INTERVAL_SEC,
                       id="screening", replace_existing=True)
 
-    # 매 1분마다 보유종목 점검 (스크리닝과 동일 주기)
-    scheduler.add_job(check_positions, "interval", seconds=SCAN_INTERVAL_SEC,
+    # 매 3분마다 보유종목 점검
+    scheduler.add_job(check_positions, "interval", seconds=_pos_check_sec,
                       id="check_positions", replace_existing=True)
+
+    # 매일 15:20 강제 청산
+    scheduler.add_job(force_close, "cron", hour=15, minute=20,
+                      id="force_close", replace_existing=True)
 
     # 매일 15:35 일일 스냅샷
     scheduler.add_job(save_daily_snapshot, "cron", hour=15, minute=35,

@@ -39,6 +39,7 @@ class Portfolio:
         self._buy_total: int = 0   # 누적 매수 금액
         self._sell_total: int = 0  # 누적 매도 금액
         self._fees_total: int = 0  # 누적 수수료+세금
+        self._watchlist: dict[str, dict] = {}  # code -> {name, price, timestamp, score, ...}
         self._reload()
 
     # ── 싱글턴 ──────────────────────────────────────────
@@ -385,6 +386,19 @@ class Portfolio:
         except Exception:
             return 0
 
+    def _daily_total_buys(self) -> int:
+        """당일 전체 매수 건수."""
+        from app.storage.db import _conn
+        try:
+            with _conn() as c:
+                row = c.execute(
+                    "SELECT COUNT(*) FROM trades WHERE side = 'BUY' "
+                    "AND DATE(created_at) = DATE('now', 'localtime')",
+                ).fetchone()
+                return row[0]
+        except Exception:
+            return 0
+
     def _find_position(self, code: str) -> dict | None:
         for p in self._positions:
             if p["code"] == code:
@@ -413,19 +427,77 @@ class Portfolio:
 
 
 def run_screening_cycle() -> None:
-    """1분마다 실행되는 메인 스크리닝-매수 사이클.
+    """5분마다 실행되는 메인 스크리닝-매수 사이클.
 
-    1. screen_stocks()로 스크리닝
-    2. evaluate_pullback()로 시그널 생성
-    3. BUY 시그널 → portfolio.buy() 실행
+    1단계: screen_stocks() → evaluate_pullback() → watchlist 등록
+    2단계: watchlist에서 5분+ 경과 & 가격 범위 확인 → 매수
     """
+    import time as _time
+    from app.config import WATCHLIST_MIN_WAIT_SEC, WATCHLIST_PULLBACK_MIN, WATCHLIST_PULLBACK_MAX, MAX_DAILY_BUYS
+
     portfolio = Portfolio.instance()
 
+    # === 2단계: watchlist에서 조건 충족 종목 매수 ===
+    now = _time.time()
+    to_remove = []
+
+    for code, entry in list(portfolio._watchlist.items()):
+        elapsed = now - entry["timestamp"]
+        if elapsed < WATCHLIST_MIN_WAIT_SEC:
+            continue  # 아직 대기 중
+
+        # 일일 매수 한도 체크
+        if portfolio._daily_total_buys() >= MAX_DAILY_BUYS:
+            logger.info("일일 매수 한도 %d건 도달", MAX_DAILY_BUYS)
+            break
+
+        if not portfolio.can_buy():
+            break
+
+        # 현재가 확인
+        try:
+            cur_data = get_naver_price(code)
+            current_price = cur_data.get("price", 0) if cur_data else 0
+        except Exception:
+            to_remove.append(code)
+            continue
+
+        if current_price <= 0:
+            to_remove.append(code)
+            continue
+
+        reg_price = entry["price"]
+        change_pct = (current_price - reg_price) / reg_price * 100 if reg_price > 0 else 0
+
+        # -1% ~ +2% 범위 확인
+        if WATCHLIST_PULLBACK_MIN <= change_pct <= WATCHLIST_PULLBACK_MAX:
+            result = portfolio.buy(
+                code=code,
+                name=entry["name"],
+                price=current_price,
+                strategy="momentum_v2",
+            )
+            if result:
+                logger.info(
+                    "[2단계 매수] %s %s | 등록가 %s → 현재가 %s (%+.1f%%) | 대기 %d초",
+                    code, entry["name"], f"{reg_price:,}", f"{current_price:,}",
+                    change_pct, int(elapsed),
+                )
+            to_remove.append(code)
+        elif change_pct < WATCHLIST_PULLBACK_MIN - 2 or change_pct > WATCHLIST_PULLBACK_MAX + 1:
+            # 범위 크게 벗어나면 제거 (-3% 이하 또는 +3% 이상)
+            logger.info("[워치리스트 탈락] %s %s | %+.1f%% (범위 밖)", code, entry["name"], change_pct)
+            to_remove.append(code)
+        # 범위 근처면 다음 체크까지 유지
+
+    for code in to_remove:
+        portfolio._watchlist.pop(code, None)
+
+    # === 1단계: 새 후보 스크리닝 → watchlist 등록 ===
     if not portfolio.can_buy():
         logger.debug("매수 불가 상태, 스크리닝 스킵")
         return
 
-    # 1. 스크리닝
     try:
         screened = screen_stocks()
     except Exception:
@@ -433,34 +505,62 @@ def run_screening_cycle() -> None:
         return
 
     if not screened:
-        logger.debug("스크리닝 통과 종목 없음")
         return
 
-    logger.info("스크리닝 통과: %d종목", len(screened))
-
-    # 2. 눌림목 시그널 평가
     signals = evaluate_pullback(screened)
     if not signals:
-        logger.debug("눌림목 시그널 없음")
         return
 
-    # 3. 매수 실행 (score 높은 순서대로)
+    # watchlist에 등록 (이미 있거나 보유 중이면 스킵)
     for sig in signals:
-        if not portfolio.can_buy():
-            logger.info("매수 한도 도달, 매수 중단")
-            break
+        code = sig["code"]
+        if code in portfolio._watchlist:
+            continue
+        if any(p["code"] == code for p in portfolio._positions):
+            continue
 
-        result = portfolio.buy(
-            code=sig["code"],
-            name=sig["name"],
-            price=sig["price"],
-            strategy=sig["strategy"],
-        )
+        portfolio._watchlist[code] = {
+            "name": sig["name"],
+            "price": sig["price"],
+            "score": sig["score"],
+            "timestamp": now,
+            "reason": sig["reason"],
+        }
+        logger.info("[워치리스트 등록] %s %s | %s원 | score %.3f",
+                    code, sig["name"], f"{sig['price']:,}", sig["score"])
+
+
+def force_close_all() -> None:
+    """15:20 당일 강제 청산 — 모든 보유 포지션을 시장가로 매도."""
+    portfolio = Portfolio.instance()
+    positions = get_open_positions()
+
+    if not positions:
+        logger.info("강제 청산: 보유 포지션 없음")
+        return
+
+    logger.info("── 당일 강제 청산 시작 (%d종목) ──", len(positions))
+
+    for pos in positions:
+        code = pos["code"]
+        name = pos["name"]
+
+        try:
+            data = get_naver_price(code)
+            current_price = data.get("price", 0) if data else 0
+        except Exception:
+            current_price = pos["buy_price"]  # 폴백
+
+        if current_price <= 0:
+            current_price = pos["buy_price"]
+
+        result = portfolio.sell(code=code, price=current_price, ratio=1.0)
         if result:
-            logger.info(
-                "매수 체결: %s %s (score %.1f, %s)",
-                sig["code"], sig["name"], sig["score"], sig["reason"],
-            )
+            logger.info("[강제청산] %s %s | %+.2f%%", code, name, result["profit_pct"])
+
+    # watchlist도 초기화
+    portfolio._watchlist.clear()
+    logger.info("── 당일 강제 청산 완료 ──")
 
 
 def check_positions_cycle() -> None:
@@ -468,7 +568,7 @@ def check_positions_cycle() -> None:
 
     1. 보유 종목 순회
     2. check_hold_or_sell() 판단
-    3. SELL/PARTIAL_SELL → portfolio.sell() 실행
+    3. SELL → portfolio.sell() 실행
     4. highest_price 갱신
     """
     portfolio = Portfolio.instance()
@@ -491,12 +591,6 @@ def check_positions_cycle() -> None:
                 code=decision["code"],
                 price=decision["current_price"],
                 ratio=1.0,
-            )
-        elif decision["signal"] == "PARTIAL_SELL":
-            portfolio.sell(
-                code=decision["code"],
-                price=decision["current_price"],
-                ratio=0.5,
             )
         # HOLD는 로깅만 (WARNING 포함 시 이미 pullback.py에서 로그)
 
